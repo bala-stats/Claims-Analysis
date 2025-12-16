@@ -1,2 +1,2 @@
 # Claims-Analysis
-Visuals of the claim data
+Visuals of claims data
