@@ -1,0 +1,78 @@
+---
+title: "Provider Analysis"
+date: "2025-12-16"
+output: 
+  flexdashboard::flex_dashboard
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo = FALSE}
+library(flexdashboard)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(data.table)
+library(arrow)
+library(lubridate)
+```
+
+
+
+```{r, Readingcsv file, echo=FALSE }
+
+folder_path <- '/cloud/project/'
+frddata <- read_csv_arrow(paste0(folder_path,'Train-1542865627584.csv'))
+```
+
+```{r, IP data, echo=FALSE}
+Ipdata <- read_csv_arrow(paste0(folder_path,'Train_Inpatientdata-1542865627584.csv'))
+
+Ipdata_1 <- Ipdata %>% mutate(ndays_claims = (ClaimEndDt - ClaimStartDt),
+                         ndays_admis = (DischargeDt - AdmissionDt)
+                          ) %>%
+  dplyr::group_by(Provider) %>% 
+  summarise(
+    IP_Nclaims = n_distinct(ClaimID),
+    IP_NBeneids = n_distinct(BeneID),
+    IP_aveclaimdays = mean(ndays_claims),
+    IP_aveadmtdays =  mean(ndays_admis), 
+    IP_amtReim_pclm = mean(InscClaimAmtReimbursed),
+    IP_dedtamtpaid = mean(DeductibleAmtPaid),
+    IP_avepys_count = (n_distinct(AttendingPhysician) / n_distinct(ClaimID) ),
+    IP_aveoprpys_count = (n_distinct(OperatingPhysician) / n_distinct(ClaimID) ),
+    IP_aveothpys_count = (n_distinct(OtherPhysician) / n_distinct(ClaimID) )
+  )  %>%
+  select(Provider,IP_Nclaims,IP_NBeneids,IP_aveclaimdays,IP_aveadmtdays,IP_amtReim_pclm,IP_dedtamtpaid,
+               IP_avepys_count,IP_aveothpys_count,IP_aveothpys_count)
+
+#head(Ipdata_1)
+```
+
+
+
+```{r, data View, echo=FALSE}
+
+plot_data <- Ipdata %>%  
+  mutate(
+     IP_monthyear =  floor_date(ClaimStartDt, "month")
+  ) %>% arrange(IP_monthyear) %>% group_by(IP_monthyear) %>%
+  summarise(n_provider = n_distinct(Provider)) 
+
+p <- ggplot(plot_data, aes(x = IP_monthyear, y = n_provider, fill = IP_monthyear)) +
+  geom_col() +
+  labs(title = "Month wise distribution",
+       x = "Month",
+       y = "No of Providers") +
+  theme_minimal()
+
+p
+
+```
+
+
+
